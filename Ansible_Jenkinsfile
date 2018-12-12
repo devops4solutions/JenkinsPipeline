@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+     
+    stages {
+      
+	  stage('Ansible Init') {
+            steps {
+                script {
+                
+               def aNHome = tool name: 'Ansible'
+               def tfHome = tool name: 'Terraform'
+                    env.PATH = "${tfHome}:${env.PATH}"
+                env.PATH = "${aNHome}:${env.PATH}"
+                 sh 'ansible --version'
+                    
+            }
+            }
+        }
+  
+        
+        stage('Ansible Deploy') {
+             
+            steps {
+			
+			script 
+				{
+                 if (env.BRANCH_NAME == "develop") 
+				 {                                          
+                 // sh 'cp -rf config ~/.ssh/'
+                  sh 'aws s3 sync s3://test .'
+                  sh 'terraform output >>test.txt'
+                  sh './generate_ssh-config.sh dev'
+                  sh 'ansible-playbook main.yml -i environments/dev/inventory/hosts --extra-vars env=dev'
+				  sh 'ssh -N -L 3333:hostname:3306 kpdi-dev-bastion &'
+               
+                 }
+				if (env.BRANCH_NAME == "staging") 
+				{                                          
+       
+                 // sh 'cp -rf config ~/.ssh/'
+                  sh 'aws s3 sync s3://test .'
+                  sh 'terraform output >>test.txt'
+                  sh './generate_ssh-config.sh stg'
+                  sh 'ansible-playbook main.yml -i environments/stage/inventory/hosts --extra-vars env=stage'
+               
+                 }
+				 
+				  if (env.BRANCH_NAME == "master") {                                          
+       
+                
+                 // sh 'cp -rf config ~/.ssh/'
+                  sh 'aws s3 sync s3://test .'
+                  sh 'terraform output >>test.txt'
+                  sh './generate_ssh-config.sh prod'
+                  sh 'ansible-playbook main.yml -i environments/prod/inventory/hosts --extra-vars env=prod'
+               
+                 }
+              
+             
+            }
+                 
+                
+               
+           
+            }
+        }
+      
+    }
+}    
+    
